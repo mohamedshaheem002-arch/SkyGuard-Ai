@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SkyGuard AI · AWS Anomaly Intelligence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/static/vendor/chart.umd.min.js"></script>
+<script src="/static/vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+:root{--bg:#0a1120;--panel:#111a2e;--panel2:#182340;--line:rgba(255,255,255,.07);--text:#eef2ff;--muted:#93a3c8;--accent:#38bdf8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;gap:20px;padding:14px 28px;border-bottom:1px solid var(--line)}
+header h1{font-size:20px;margin:0}header h1 span.a{color:var(--accent)}header .sub{color:var(--muted);font-size:13px}
+nav{margin-left:auto;display:flex;gap:4px}
+nav button{background:transparent;border:0;color:var(--muted);padding:9px 16px;border-radius:10px;cursor:pointer;font-size:15px}
+nav button:hover{color:var(--text)}nav button.active{background:var(--panel2);color:var(--text)}
+main{padding:24px 28px 40px;max-width:1440px;margin:0 auto}
+.view{display:none}.view.active{display:block}
+.card{background:var(--panel);border-radius:14px;padding:20px 22px}
+.card h3{margin:0 0 12px;font-size:12.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px}
+.grid{display:grid;gap:18px}.g2{grid-template-columns:1.6fr 1fr}.gd{grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr)}
+@media(max-width:1050px){.g2,.gd{grid-template-columns:1fr}}
+@media(max-width:900px){header{flex-wrap:wrap}nav{margin-left:0;flex-wrap:wrap}main{padding:16px}.four{grid-template-columns:1fr 1fr}.readings{gap:18px}.readings .val{font-size:24px}table{display:block;overflow-x:auto}.summary{grid-template-columns:repeat(2,1fr)}.verdict .val{font-size:24px}}
+.stack>*+*{margin-top:18px}
+.muted{color:var(--muted)}.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.big{font-size:30px;font-weight:700;line-height:1.15}
+.tag{display:inline-block;padding:4px 10px;border-radius:8px;font-size:12.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.tag.NORMAL{background:rgba(34,197,94,.15);color:#4ade80}.tag.SENSOR_FAULT{background:rgba(239,68,68,.18);color:#f87171}
+.tag.GENUINE_WEATHER_EVENT{background:rgba(249,115,22,.18);color:#fb923c}.tag.DATA_COMM_ISSUE{background:rgba(59,130,246,.2);color:#60a5fa}.tag.UNCERTAIN{background:rgba(234,179,8,.18);color:#facc15}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.6px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--panel2)}tr.sel td{background:#1d2a4d}
+.btn{display:inline-block;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:15px;text-decoration:none}
+.btn.primary{background:#2563eb;border-color:#2563eb}.btn.primary:hover{background:#1d4ed8}.btn:disabled{opacity:.45;cursor:default}
+.seg{display:inline-flex;background:var(--panel2);border-radius:10px;padding:3px}
+.seg button{background:transparent;border:0;color:var(--muted);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:14px}.seg button.active{background:#2a3963;color:var(--text)}
+input.filter,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:15px}
+.drop{border:2px dashed #34477a;border-radius:16px;padding:44px 20px;text-align:center;background:rgba(255,255,255,.015)}
+.drop.over{border-color:var(--accent);background:rgba(56,189,248,.06)}
+.drop .t1{font-size:26px;font-weight:800;letter-spacing:1px}.drop .t2{color:var(--muted);margin:8px 0}
+.verdict{border-radius:14px;padding:20px 24px;display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.verdict .lbl{font-size:12.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}.verdict .val{font-size:30px;font-weight:800;letter-spacing:.3px}
+.verdict .sub{display:flex;gap:26px;flex-wrap:wrap}.verdict .sub .val{font-size:18px}
+.v-NORMAL{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35)}.v-SENSOR_FAULT{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4)}
+.v-GENUINE_WEATHER_EVENT{background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.4)}.v-DATA_COMM_ISSUE{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.4)}.v-UNCERTAIN{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.4)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:9px 16px;font-size:15px}.kv .k{color:var(--muted)}.kv .v{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.four{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.four .lbl{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}.four .val{font-size:20px;font-weight:700;margin-top:2px}
+.bar{height:10px;background:#1f2b4a;border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;border-radius:5px}
+.fac{display:grid;grid-template-columns:1fr 120px 76px;gap:10px;align-items:center;margin:9px 0}.fac .n{font-size:14.5px}.fac .s{font-size:13px;color:var(--muted);text-align:right;white-space:nowrap}
+.plain{font-size:15.5px;line-height:1.55;background:rgba(255,255,255,.03);border-left:3px solid var(--accent);padding:12px 14px;border-radius:8px;margin-top:14px}
+.readings{display:flex;gap:30px;flex-wrap:wrap}.readings .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}.readings .val{font-size:30px;font-weight:700}.readings .val small{font-size:14px;color:var(--muted);font-weight:500;margin-left:4px}
+.map{position:relative;height:560px;background:#0b1326;border-radius:12px;overflow:hidden}.map svg{width:100%;height:100%}.dot{cursor:pointer}.dot:hover circle{stroke:#fff;stroke-width:2}
+.legend{position:absolute;left:12px;bottom:12px;display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);background:rgba(10,17,32,.85);padding:8px 12px;border-radius:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.statrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15.5px}.statrow i{width:12px;height:12px;border-radius:50%;display:inline-block}.statrow b{margin-left:auto;font-size:20px}
+.list a{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.list a:hover{color:#fff}
+.scroll{max-height:330px;overflow:auto}
+.chartbox{height:340px;position:relative}
+.note{font-size:12.5px;color:var(--muted)}
+.warnlbl{display:inline-block;font-size:11.5px;letter-spacing:.8px;font-weight:700;color:#fbbf24;border:1px solid rgba(251,191,36,.5);border-radius:6px;padding:3px 8px;margin-top:12px}
+.back{color:var(--accent);cursor:pointer;font-size:14px;margin-bottom:8px;display:inline-block}
+.hidden{display:none!important}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:26px}
+.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:16px}.summary div.s{background:rgba(255,255,255,.03);border-radius:10px;padding:12px 14px}.summary .n{font-size:26px;font-weight:800}.summary .lbl{font-size:12px;font-weight:700;letter-spacing:.6px}
+@media(max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}}
+details.note summary{cursor:pointer;margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Sky<span class="a">Guard</span> AI <span class="muted" style="font-weight:400;font-size:14px;margin-left:8px">AWS Anomaly Intelligence</span></h1>
+  <div class="sub" id="hdr-sub">SIH26073 · MoES / IMD</div></div>
+  <nav>
+    <button data-v="overview" class="active">Overview</button>
+    <button data-v="stations">All Stations</button>
+    <button data-v="test">Test / Upload</button>
+    <button data-v="alerts">Alerts</button>
+    <button data-v="metrics">Benchmarks</button>
+  </nav>
+</header>
+<main>
+
+<section id="v-overview" class="view active">
+  <div class="grid g2">
+    <div class="card"><h3>Network status · <span id="ov-time"></span></h3><div class="map" id="map"></div></div>
+    <div class="stack">
+      <div class="card"><h3>Stations right now</h3><div id="ov-status" class="muted">Loading network…</div></div>
+      <div class="card"><h3>Needs attention</h3><div class="list scroll" id="ov-attn"></div></div>
+      <button class="btn primary" style="width:100%;padding:16px;font-size:17px;font-weight:700" onclick="show('test')">TEST SKYGUARD-X → upload a CSV</button>
+    </div>
+  </div>
+</section>
+
+<section id="v-stations" class="view">
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px"><h3 style="margin:0">All stations · current reading</h3>
+      <input class="filter" id="st-filter" placeholder="filter by name or ID" style="margin-left:auto;width:260px"></div>
+    <table id="st-table"></table>
+  </div>
+</section>
+
+<section id="v-station" class="view"><div id="detail-demo"></div></section>
+
+<section id="v-test" class="view">
+  <div class="card">
+    <h3>Test SkyGuard AI</h3>
+    <div class="drop" id="drop">
+      <div class="t1">DROP AWS CSV HERE</div><div class="t2">or</div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <label class="btn">Browse File<input type="file" id="file" accept=".csv,.tsv,.txt,.xlsx" style="display:none"></label>
+        <button class="btn primary" id="demo-btn">LOAD DEMO SAMPLE</button>
+      </div>
+      <div class="note" style="margin-top:14px">Any column names and units (°C / K / °F, hPa / Pa, %), any cadence, station column optional · CSV, TSV or XLSX</div>
+    </div>
+    <div id="t-status" class="muted" style="margin-top:12px"></div>
+    <div id="t-summary" class="hidden"></div>
+  </div>
+  <div id="detail-upload" style="margin-top:18px"></div>
+</section>
+
+<section id="v-alerts" class="view"><div class="card"><h3>Latest alerts · whole network</h3><table id="al-table"></table></div></section>
+
+<section id="v-metrics" class="view"><div id="metrics"></div></section>
+
+</main>
+<footer>SkyGuard AI prototype · Smart India Hackathon 2026 · PS SIH26073 · real IMD/WMO station data (Meteostat / NOAA ISD) · not an operational IMD product</footer>
+
+<script>
+const $=s=>document.querySelector(s);
+const SC={NORMAL:'#22c55e',SENSOR_FAULT:'#ef4444',GENUINE_WEATHER_EVENT:'#f97316',DATA_COMM_ISSUE:'#3b82f6',UNCERTAIN:'#eab308'};
+const VN={NORMAL:'NORMAL',SENSOR_FAULT:'SENSOR FAULT',GENUINE_WEATHER_EVENT:'WEATHER EVENT',DATA_COMM_ISSUE:'DATA COMM ISSUE',UNCERTAIN:'UNCERTAIN'};
+const VL={...VN,GENUINE_WEATHER_EVENT:'GENUINE WEATHER EVENT'};
+const PRI={SENSOR_FAULT:0,DATA_COMM_ISSUE:1,GENUINE_WEATHER_EVENT:2,UNCERTAIN:3,NORMAL:4};
+const ORDER=['NORMAL','SENSOR_FAULT','GENUINE_WEATHER_EVENT','DATA_COMM_ISSUE','UNCERTAIN'];
+const SN={temp:'Temperature',pres:'Pressure',rh:'Humidity',td:'Dew point',all:'All sensors'};
+const UN={temp:'°C',pres:'hPa',rh:'%'};
+const FN={bias:'Calibration bias',drift:'Calibration drift',frozen:'Stuck / frozen sensor',spike:'Transient spike',noise:'Excessive noise',inconsistency:'T / RH physical inconsistency',out_of_range:'Out of plausible range',missing:'No telemetry (gap)',fill:'Fill / sentinel value',stale:'Repeated packet (stale)',duplicate:'Duplicate timestamp',normal:'—',unknown:'Unclear'};
+const SEVC={LOW:'#93a3c8',MEDIUM:'#eab308',HIGH:'#fb923c',CRITICAL:'#ef4444'};
+const SEVR={CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+const fmt=(v,d=1)=>(v==null||Number.isNaN(+v))?'—':Number(v).toFixed(d);
+const val=(v,d=1)=>(v==null||v<=-99||v>=9000)?'—':Number(v).toFixed(d);
+const pct=v=>v==null?'—':Math.round(v*100)+'%';
+const sg=(v,d=1)=>v==null?'—':(v>0?'+':'')+Number(v).toFixed(d)+'σ';
+const tag=v=>`<span class="tag ${v}">${VN[v]||v}</span>`;
+const HC=h=>h>=80?'#22c55e':h>=60?'#eab308':h>=40?'#fb923c':'#ef4444';
+const nameOf=id=>((META&&META.stations.find(s=>s.station_id===id))||{}).name||id;
+let META=null,OVER=null,UP=null,THETA=0.85;
+
+/* ---------- navigation ---------- */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+function show(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='v-'+v));
+  const nv=v==='station'?'stations':v;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===nv));
+  if(v==='metrics')renderMetrics();
+  window.scrollTo(0,0);
+}
+
+/* ---------- init ---------- */
+async function init(){
+  META=await (await fetch('/api/meta')).json(); THETA=META.theta||0.85;
+  $('#hdr-sub').textContent=`SIH26073 · MoES / IMD · ${META.stations.length} real IMD/WMO stations`;
+  OVER=await (await fetch('/api/overview')).json();
+  renderOverview(); renderStations(); renderAlertsTab();
+}
+const curRows=()=>META.stations.map(s=>({...s,cur:(OVER.latest||{})[s.station_id]||null}));
+
+/* ---------- overview ---------- */
+function renderOverview(){
+  const rows=curRows(); const ts=rows.map(r=>r.cur&&r.cur.ts).filter(Boolean).sort().pop();
+  $('#ov-time').textContent=`latest reading ${ts} UTC`;
+  const cnt={};rows.forEach(r=>{const v=(r.cur&&r.cur.verdict)||'NORMAL';cnt[v]=(cnt[v]||0)+1});
+  $('#ov-status').innerHTML=Object.keys(PRI).sort((a,b)=>PRI[a]-PRI[b]).map(v=>`<div class="statrow"><i style="background:${SC[v]}"></i>${VL[v]}<b>${cnt[v]||0}</b></div>`).join('');
+  const attn=rows.filter(r=>r.cur&&r.cur.verdict!=='NORMAL').sort((a,b)=>PRI[a.cur.verdict]-PRI[b.cur.verdict]);
+  $('#ov-attn').innerHTML=attn.length?attn.map(r=>`<a onclick="goStation('${r.station_id}')"><span>${r.name}<span class="muted mono" style="margin-left:8px;font-size:12.5px">${r.station_id}</span></span><span class="muted" style="margin-left:auto">${FN[r.cur.fault]||''}</span>${tag(r.cur.verdict)}</a>`).join(''):'<div class="muted">All stations normal.</div>';
+  drawMap(rows);
+}
+function drawMap(rows){
+  const W=760,H=560,lats=rows.map(s=>s.lat),lons=rows.map(s=>s.lon);
+  const la0=Math.min(...lats)-1.5,la1=Math.max(...lats)+1.5,lo0=Math.min(...lons)-1.5,lo1=Math.max(...lons)+1.5;
+  const X=lo=>(lo-lo0)/(lo1-lo0)*W,Y=la=>H-(la-la0)/(la1-la0)*H;
+  const placed=[]; const canLabel=(x,y,w)=>{if(placed.some(b=>x<b.x+b.w&&x+w>b.x&&Math.abs(y-b.y)<14))return false;placed.push({x,y,w});return true};
+  const sorted=[...rows].sort((a,b)=>PRI[(a.cur&&a.cur.verdict)||'NORMAL']-PRI[(b.cur&&b.cur.verdict)||'NORMAL']);   // anomalous stations get their label first
+  const dots=sorted.map(s=>{const v=(s.cur&&s.cur.verdict)||'NORMAL',lab=s.name.split(' ')[0],x=X(s.lon),y=Y(s.lat),show=canLabel(x+11,y,lab.length*6.5+6);
+    return `<g class="dot" onclick="goStation('${s.station_id}')"><circle cx="${x}" cy="${y}" r="${v==='NORMAL'?6:9}" fill="${SC[v]}" fill-opacity=".9" stroke="#0b1326" stroke-width="1.5"/><title>${s.name} (${s.station_id}) · ${VL[v]}</title>${show?`<text x="${x+11}" y="${y+4}" font-size="11" fill="${v==='NORMAL'?'#93a3c8':'#eef2ff'}" font-weight="${v==='NORMAL'?400:700}">${lab}</text>`:''}</g>`}).join('');
+  $('#map').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${dots}</svg><div class="legend">${ORDER.map(v=>`<span><i style="background:${SC[v]}"></i>${VL[v]}</span>`).join('')}</div>`;
+}
+
+/* ---------- all stations ---------- */
+function renderStations(){
+  const q=($('#st-filter').value||'').toLowerCase();
+  const rows=curRows().filter(r=>!q||r.name.toLowerCase().includes(q)||r.station_id.includes(q))
+    .sort((a,b)=>(PRI[(a.cur&&a.cur.verdict)||'NORMAL']-PRI[(b.cur&&b.cur.verdict)||'NORMAL'])||a.name.localeCompare(b.name));
+  $('#st-table').innerHTML=`<tr><th>Station</th><th>ID</th><th class="num">T (°C)</th><th class="num">P (hPa)</th><th class="num">RH (%)</th><th>Status</th><th class="num">Conf</th></tr>`+
+    rows.map(r=>{const c=r.cur||{};return `<tr class="click" onclick="goStation('${r.station_id}')"><td><b>${r.name}</b></td><td class="mono muted">${r.station_id}</td><td class="num">${val(c.temp)}</td><td class="num">${val(c.pres)}</td><td class="num">${val(c.rh,0)}</td><td>${tag(c.verdict||'NORMAL')}</td><td class="num">${pct(c.confidence)}</td></tr>`}).join('');
+}
+$('#st-filter').oninput=renderStations;
+
+/* ---------- alerts tab ---------- */
+function renderAlertsTab(){
+  const eps=OVER.recent_alerts||[],nAct=eps.filter(a=>a.active).length;
+  const when=a=>{const s=(a.start||a.ts).slice(5,16),e=a.ts.slice(5,16);return a.hours>1?`${s} → ${e}`:e};
+  const rows=eps.map(a=>`<tr class="click" onclick="goStation('${a.station_id}','${a.ts}')"><td>${a.active?`<b style="color:${SC[a.verdict]}">ACTIVE</b>`:`<span class="muted">ended ${a.ts.slice(11,16)}</span>`}</td><td class="mono muted">${when(a)}${a.hours>1?` <span style="opacity:.7">(${a.hours} h)</span>`:''}</td><td><b>${nameOf(a.station_id)}</b> <span class="muted mono">${a.station_id}</span></td><td>${tag(a.verdict)}</td><td>${FN[a.fault]||a.fault||''}</td><td class="muted">${SN[a.sensor]||''}</td><td style="color:${SEVC[a.severity]}">${a.severity}</td><td class="num">${pct(a.confidence)}</td></tr>`).join('');
+  $('#al-table').innerHTML=`<tr><td colspan="8" class="note" style="padding:0 0 12px">${nAct} active now (these are the non-normal stations on the Overview) · ${eps.length-nAct} already cleared in the last 7 days · one line per episode, click for the explanation</td></tr><tr><th>Now</th><th>Time (UTC)</th><th>Station</th><th>Status</th><th>Cause</th><th>Sensor</th><th>Severity</th><th class="num">Conf</th></tr>${rows||'<tr><td colspan="8" class="muted">No alerts in the last 7 days.</td></tr>'}`;
+}
+
+/* ---------- station detail (shared by demo + upload) ---------- */
+async function goStation(sid,ts){
+  show('station'); $('#detail-demo').innerHTML='<div class="muted">Loading station…</div>';
+  let days=14;
+  if(ts){const last=Date.parse(((OVER.latest||{})[sid]||{}).ts?OVER.latest[sid].ts.replace(' ','T')+':00Z':Date.now()); const need=(last-Date.parse(ts.replace(' ','T')+':00Z'))/864e5+1; days=need<=7?7:need<=14?14:need<=30?30:need<=60?60:120;}
+  await loadDemoStation(sid,days,ts);
+}
+async function loadDemoStation(sid,days,ts){
+  const d=await (await fetch(`/api/station/${sid}?days=${days}`)).json(); const m=META.stations.find(x=>x.station_id===sid)||{};
+  DD.load({mode:'demo',sid,name:m.name||sid,sub:`${sid} · ${fmt(m.lat,2)}°N ${fmt(m.lon,2)}°E · ${m.elev} m`,series:d.series,alerts:d.alerts,health:d.health,
+           latest:(OVER.latest||{})[sid]||null,nbN:(META.neighbours[sid]||[]).length,days,selectTs:ts});
+}
+
+function Detail(root,name){
+  const S={ctx:null,key:'temp',chart:null,sel:null};
+  const rowAlert=i=>{const s=S.ctx.series;const v=s.verdict[i];const o={ts:s.ts[i],station_id:S.ctx.sid,temp:s.temp[i],pres:s.pres[i],rh:s.rh[i],verdict:v,fault:s.fault[i],sensor:s.sensor[i],severity:s.severity[i],corrected:s.corrected[i],p_fault:s.p_fault[i],explanation:'',shap_top:null};
+    o.confidence=v==='NORMAL'?(o.p_fault!=null?1-o.p_fault:null):o.p_fault;['temp','pres','rh'].forEach(k=>{o[k+'_expected']=s[k+'_expected']?s[k+'_expected'][i]:null});return o};
+  const latestObs=()=>S.ctx.latest||rowAlert(S.ctx.series.ts.length-1);
+  function pickDefault(c){
+    if(c.selectTs){const a=c.alerts.find(x=>x.ts===c.selectTs);if(a)return a;}
+    if(c.mode==='upload'&&c.alerts.length){return [...c.alerts].sort((a,b)=>(SEVR[a.severity]-SEVR[b.severity])||(PRI[a.verdict]-PRI[b.verdict])||(a.ts<b.ts?1:-1))[0];}
+    const l=latestObs(); return c.alerts.find(x=>x.ts===l.ts)||l;
+  }
+  function load(c){S.ctx=c;S.sel=pickDefault(c);if(S.sel&&['temp','pres','rh'].includes(S.sel.sensor))S.key=S.sel.sensor;skeleton();panels();chart();}
+  function skeleton(){
+    const c=S.ctx; const stSel=c.stationList&&c.stationList.length>1?`<select id="${name}-st" style="margin-left:auto">${c.stationList.map(s=>`<option value="${s}" ${s===c.sid?'selected':''}>${s}</option>`).join('')}</select>`:'';
+    const win=c.mode==='demo'?`<div class="seg" id="${name}-win" style="margin-left:auto">${[7,14,30].map(d=>`<button class="${d===c.days?'active':''}" data-d="${d}">${d} days</button>`).join('')}</div>`:stSel;
+    root.innerHTML=`<div class="stack">
+      <div>${c.mode==='demo'?`<span class="back" onclick="show('stations')">← All stations</span>`:''}
+        <div style="display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap"><div><div class="big">${c.name}</div><div class="muted">${c.sub||''}</div></div><div class="muted" id="${name}-obs" style="margin-left:auto"></div></div></div>
+      <div class="grid gd">
+        <div class="card"><h3>Readings</h3><div class="readings" id="${name}-read"></div></div>
+        <div id="${name}-banner"></div>
+      </div>
+      <div class="grid gd">
+        <div class="stack">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+              <div class="seg" id="${name}-tabs">${['temp','pres','rh'].map(k=>`<button class="${k===S.key?'active':''}" data-k="${k}">${SN[k]}</button>`).join('')}</div>${win}</div>
+            <div class="chartbox"><canvas></canvas></div>
+            <div class="note" style="margin-top:10px">● anomaly (colour = status) · ▲ corrected estimate · dashed = expected value · click an anomaly point to see why</div>
+          </div>
+          <div class="card"><h3>Anomalies in window · <span id="${name}-n"></span></h3><div class="scroll"><table id="${name}-list"></table></div></div>
+        </div>
+        <div class="stack">
+          <div class="card" id="${name}-why"></div>
+          <div class="card" id="${name}-shap"></div>
+          <div class="card" id="${name}-sres"></div>
+          <div class="card" id="${name}-health"></div>
+        </div>
+      </div></div>`;
+    root.querySelectorAll(`#${name}-tabs button`).forEach(b=>b.onclick=()=>{S.key=b.dataset.k;root.querySelectorAll(`#${name}-tabs button`).forEach(x=>x.classList.toggle('active',x===b));chart();});
+    const w=root.querySelector(`#${name}-win`); if(w)w.querySelectorAll('button').forEach(b=>b.onclick=()=>loadDemoStation(c.sid,+b.dataset.d,S.sel&&S.sel.ts));
+    const st=root.querySelector(`#${name}-st`); if(st)st.onchange=()=>renderUploadDetail(st.value);
+    list();
+  }
+  function list(){
+    const al=[...S.ctx.alerts].sort((a,b)=>a.ts<b.ts?1:-1); root.querySelector(`#${name}-n`).textContent=al.length;
+    root.querySelector(`#${name}-list`).innerHTML=al.length?`<tr><th>Time (UTC)</th><th>Status</th><th>Cause</th><th>Sensor</th><th>Severity</th><th class="num">Conf</th></tr>`+
+      al.map((a,i)=>`<tr class="click ${S.sel&&S.sel.ts===a.ts?'sel':''}" data-ts="${a.ts}" onclick="${name}.selectTs('${a.ts}')"><td class="mono muted">${a.ts}</td><td>${tag(a.verdict)}</td><td>${FN[a.fault]||a.fault||''}</td><td class="muted">${SN[a.sensor]||''}</td><td style="color:${SEVC[a.severity]}">${a.severity}</td><td class="num">${pct(a.confidence)}</td></tr>`).join('')
+      :'<tr><td class="muted">No anomalies in this window.</td></tr>';
+  }
+  function selectTs(ts){
+    let a=S.ctx.alerts.find(x=>x.ts===ts); if(!a){const i=S.ctx.series.ts.indexOf(ts);if(i<0)return;a=rowAlert(i);}
+    S.sel=a; panels(); root.querySelectorAll(`#${name}-list tr[data-ts]`).forEach(tr=>tr.classList.toggle('sel',tr.dataset.ts===ts));
+    scrollSel();if(['temp','pres','rh'].includes(a.sensor)&&a.sensor!==S.key){S.key=a.sensor;root.querySelectorAll(`#${name}-tabs button`).forEach(x=>x.classList.toggle('active',x.dataset.k===S.key));chart();} else selRing();
+  }
+  function selLatest(){S.sel=(()=>{const l=latestObs();return S.ctx.alerts.find(x=>x.ts===l.ts)||l})();panels();root.querySelectorAll(`#${name}-list tr[data-ts]`).forEach(tr=>tr.classList.toggle('sel',tr.dataset.ts===S.sel.ts));selRing();}
+  function evidence(a){
+    const sens=['temp','pres','rh']; let sen=sens.includes(a.sensor)?a.sensor:null;
+    if(!sen){let best=-1;sens.forEach(s=>{const v=Math.abs(a[s+'_cz']==null?0:a[s+'_cz']);if(v>best){best=v;sen=s}})}
+    const ex=a.explanation||''; let k=null,n=null,m;
+    if(m=ex.match(/\((\d+)\/(\d+) neighbours anomalous\)/)){k=+m[1];n=+m[2]} else if(m=ex.match(/(\d+)\/(\d+) neighbouring stations/)){k=+m[1];n=+m[2]} else if(m=ex.match(/from (\d+) neighbours/)){n=+m[1]}
+    if(n==null&&S.ctx.nbN)n=S.ctx.nbN;
+    const w=a[sen+'_witness']; if(k==null&&n!=null&&w!=null)k=Math.round(w*n);
+    const cus=(m=ex.match(/CUSUM ([\d.]+)/))?+m[1]:null, unch=(m=ex.match(/unchanged for (\d+) h/))?+m[1]:null, gap=(m=ex.match(/\((\d+) h gap\)/))?+m[1]:null;
+    return {sen,k,n,sp_z:a[sen+'_sp_z'],cz:a[sen+'_cz'],w,cus,unch,gap};
+  }
+  function plain(a,e){
+    const s=SN[e.sen]||'The reading';
+    const agree=(e.k!=null&&e.n!=null)?`${e.k} of ${e.n} neighbouring stations`:(e.w==null?'no neighbouring station data':(e.w>=0.75?'most neighbouring stations':e.w>=0.4?'about half of the neighbouring stations':e.w>0?'a minority of neighbouring stations':'no neighbouring station'));
+    const plural=(e.k!=null&&e.n!=null)?e.k!==1:/^(most|about half|a minority)/.test(agree);
+    const agreeV=plural?'share it':'shares it';
+    // for sensor faults: how do the neighbours compare?  (witness = neighbours that are themselves unusual vs their own normal)
+    const nbCtx=(e.k===0||e.w===0)?`while no neighbouring station shows anything unusual`
+      :(e.k!=null&&e.n!=null)?`${e.k} of ${e.n} neighbouring stations are also somewhat unusual, but this station goes far beyond them`
+      :(e.w!=null&&e.w>0)?`some neighbouring stations are also somewhat unusual, but this station goes far beyond them`
+      :`with no neighbouring station data to support it`;
+    const off=(a.bias_estimate!=null)?` Estimated offset ${a.bias_estimate>0?'+':''}${fmt(a.bias_estimate,e.sen==='rh'?0:1)} ${UN[e.sen]||''}.`:'';
+    const sp=e.sp_z!=null?`${Math.abs(e.sp_z).toFixed(1)}σ ${e.sp_z>0?'above':'below'} what nearby stations imply`:'not comparable with neighbours (none available)';
+    const cl=e.cz!=null?`${Math.abs(e.cz).toFixed(1)}σ ${e.cz>0?'above':'below'} this station's normal for the season and hour`:'close to its seasonal normal';
+    if(a.verdict==='GENUINE_WEATHER_EVENT')return `${s} is ${cl}, but ${agree} show the same anomaly at the same time. This indicates a regional weather event rather than an isolated sensor failure — the data should be kept.`;
+    if(a.verdict==='UNCERTAIN'&&/natural repeat length/.test(a.explanation||''))return `${s} has read the same value for ${e.unch||'several'} hours. ${/whole numbers/.test(a.explanation)?'This station\'s logger reports whole numbers, so identical readings for several hours are normal here':'That is still within the natural repeat length for this station'}${e.sp_z!=null?`, and the value is only ${Math.abs(e.sp_z).toFixed(1)}σ from what neighbours imply`:''}. No alert yet — it becomes a SENSOR FAULT if it stays stuck for ${/for (\d+) h or/.test(a.explanation)?a.explanation.match(/for (\d+) h or/)[1]:'several more'} h or starts to diverge from the neighbours.`;
+    if(a.verdict==='UNCERTAIN')return `There is some evidence of a fault on the ${s.toLowerCase()} sensor (fault probability ${pct(a.p_fault)}), below the ${pct(THETA)} alert threshold. ${agree.charAt(0).toUpperCase()+agree.slice(1)} ${agreeV}. No alert yet — the verdict firms up if the pattern persists.`;
+    if(a.verdict==='DATA_COMM_ISSUE'){
+      if(a.fault==='missing')return `No data was received for ${e.gap||'several'} hour(s). This is a communication or power failure at the station, not a sensor measurement problem.`;
+      if(a.fault==='fill')return `The logger transmitted a fill value instead of a measurement — a firmware or configuration issue, not real weather.`;
+      if(a.fault==='stale')return `The station re-sent an identical T/P/RH packet several times in a row — the logger is repeating old data (clock or transmit-buffer problem).`;
+      return `Two reports carry the same timestamp — de-duplicate the feed and check the logger clock.`;}
+    if(a.verdict==='SENSOR_FAULT'){
+      switch(a.fault){
+        case 'bias':
+        case 'drift':return `${s} is ${sp} and ${cl}, ${nbCtx}. The offset is one-sided and has persisted for hours (CUSUM alarm), so this is a calibration offset in the sensor, not regional weather.${off} ${a.fault==='bias'?'The offset appeared as a step (bias).':'The offset looks progressive (drift) — a sudden step bias can also be reported this way once it has persisted.'} Either way the fix is recalibration.`;
+        case 'frozen':return `${s} has reported the same value for ${e.unch||'several'} hours while neighbouring stations and the other sensors kept changing. The sensing element or its connection is stuck.`;
+        case 'spike':return (e.cz!=null&&Math.abs(e.cz)>=3)?`${s} jumped far outside its normal hour-to-hour change (${cl}) and then returned, ${nbCtx} — a transient sensor or logger glitch, not weather.`:`The model detected a short-lived irregularity in the ${s.toLowerCase()} signal (its rate of change and dew-point behaviour), not shared by the other sensors; the value has already returned to normal. Transient glitch — no dispatch needed.`;
+        case 'noise':return `${s} is fluctuating far more than physically plausible while neighbouring stations are steady — electrical noise or a failing element.`;
+        case 'inconsistency':return `Humidity and temperature no longer move together the way physics requires (dew point above air temperature or the T/RH relationship broken). The humidity element is probably wet or contaminated.`;
+        case 'out_of_range':return `The value is physically impossible for this instrument and has been rejected.`;
+        default:return `${s} is ${sp} and ${cl}, ${nbCtx}, so a sensor fault is more likely than a regional weather event.`;}}
+    return `The reading agrees with neighbouring stations, this station's own climatology and the physical relationships between temperature, pressure and humidity.`;
+  }
+  function fname(f){
+    const O={t_stuck_rh_moving:'Temperature frozen while humidity moves',rh_stuck_t_moving:'Humidity frozen while temperature moves',p_t_corr12:'Pressure / temperature 12-h correlation',rh_t_corr12:'Temperature / humidity 12-h correlation',td_t_stdratio6:'Dew-point stability vs temperature',td_minus_t:'Dew point minus air temperature',all_streak_min_h:'All sensors unchanged (hours)',n_missing:'Missing sensors',hour_sin:'Time of day',hour_cos:'Time of day',month_sin:'Season',month_cos:'Season',pres_tend3:'3-h pressure tendency',pres_tend3_z:'3-h pressure tendency',pres_tend3_minus_nb:'Pressure tendency vs neighbours'};
+    if(O[f])return O[f];
+    const m=f.match(/^(temp|pres|rh|td)_(.+)$/); if(!m)return f.replace(/_/g,' ');
+    const K={cz:'vs seasonal normal',clim_med:'seasonal level',step_z:'hour-to-hour jump',step_prev_z:'previous-hour jump',acc_z:'acceleration of change',std6_r:'6-h variability',rng24_r:'24-h range',dstd6_r:'change in variability',ewm24_cz:'24-h smoothed deviation',ewm72_cz:'72-h smoothed deviation',slope72_cz:'72-h trend',cusum_pos:'sustained positive offset (CUSUM)',cusum_neg:'sustained negative offset (CUSUM)',streak_h:'hours unchanged',streak_r:'persistence vs station norm',missing:'missing',gap_h:'gap length',oor:'out of range',sp_cusum_pos:'sustained offset vs neighbours',sp_cusum_neg:'sustained offset vs neighbours',sp_z:'vs neighbours (spatial)',sp_n:'neighbour count',witness:'neighbour agreement',nb_med_z:"neighbours' own anomaly",sp_est:'neighbour estimate',sp_ewm24_z:'24-h deviation vs neighbours',sp_slope72_z:'72-h trend vs neighbours',sp_bias_med24:'24-h bias vs neighbours',cz_minus_nb:'deviation not shared by neighbours'};
+    return `${SN[m[1]]} ${K[m[2]]||m[2].replace(/_/g,' ')}`;
+  }
+  function causeLabel(a){if(a.verdict==='GENUINE_WEATHER_EVENT')return 'Regional weather (neighbours agree)';if(a.verdict==='NORMAL')return '—';return FN[a.fault]||a.fault||'—';}
+  function panels(){
+    const a=S.sel, c=S.ctx, l=latestObs(), isLatest=a.ts===l.ts;
+    root.querySelector(`#${name}-obs`).innerHTML=`Observation <b class="mono" style="color:var(--text)">${a.ts} UTC</b> ${isLatest?'· latest':`· <span class="back" style="margin:0" onclick="${name}.selLatest()">↺ back to latest</span>`}`;
+    root.querySelector(`#${name}-read`).innerHTML=['temp','pres','rh'].map(k=>`<div><div class="lbl">${SN[k]}</div><div class="val">${val(a[k],k==='rh'?0:1)}<small>${UN[k]}</small></div></div>`).join('');
+    const e=evidence(a);
+    root.querySelector(`#${name}-banner`).innerHTML=`<div class="verdict v-${a.verdict}"><div><div class="lbl">Final verdict · this reading</div><div class="val" style="color:${SC[a.verdict]}">${VL[a.verdict]}</div></div>
+      <div class="sub">${a.verdict!=='NORMAL'?`<div><div class="lbl">Cause</div><div class="val">${causeLabel(a)}${['temp','pres','rh'].includes(a.sensor)?` <span class="muted">· ${SN[a.sensor]}</span>`:''}</div></div><div><div class="lbl">Severity</div><div class="val" style="color:${SEVC[a.severity]}">${a.severity}</div></div>`:''}<div><div class="lbl">Confidence</div><div class="val">${pct(a.confidence)}</div></div></div></div>`;
+    /* WHY */
+    const cus=e.cus!=null?(e.cus>5?`HIGH (${e.cus.toFixed(1)})`:`normal (${e.cus.toFixed(1)})`):(['bias','drift'].includes(a.fault)&&a.verdict==='SENSOR_FAULT'?'HIGH':'not triggered');
+    const agree=(e.k!=null&&e.n!=null)?`${e.k}/${e.n}`:(e.w!=null?pct(e.w):'—');
+    const recentHint=(a.verdict==='NORMAL'&&c.alerts.length)?(()=>{const r=[...c.alerts].sort((x,y)=>x.ts<y.ts?1:-1).find(x=>x.verdict!=='UNCERTAIN')||c.alerts[0];return `<div class="plain" style="border-color:${SC[r.verdict]}">Most recent anomaly at this station: <b>${r.ts}</b> · ${tag(r.verdict)} <span class="back" style="margin:0 0 0 8px" onclick="${name}.selectTs('${r.ts}')">show why →</span></div>`})():'';
+    root.querySelector(`#${name}-why`).innerHTML=`<h3>Why this result?</h3>
+      <div class="four"><div><div class="lbl">Final verdict</div><div class="val" style="color:${SC[a.verdict]}">${VL[a.verdict]}</div></div><div><div class="lbl">Root cause</div><div class="val">${causeLabel(a)}</div></div><div><div class="lbl">Severity</div><div class="val" style="color:${SEVC[a.severity]}">${a.verdict==='NORMAL'?'—':a.severity}</div></div><div><div class="lbl">Confidence</div><div class="val">${pct(a.confidence)}</div></div></div>
+      <div class="kv" style="margin-top:18px"><span class="k">Spatial deviation · ${SN[e.sen]} vs neighbours</span><span class="v">${e.sp_z!=null?sg(e.sp_z):'no neighbours'}</span><span class="k">Neighbour agreement</span><span class="v">${agree}</span><span class="k">Climatology deviation</span><span class="v">${sg(e.cz)}</span><span class="k">CUSUM (sustained offset)</span><span class="v">${cus}</span></div>
+      <div class="plain">${plain(a,e)}</div>${(a.verdict==='SENSOR_FAULT'&&['bias','drift'].includes(a.fault))?`<div class="note" style="margin-top:8px">Bias (step) and drift (progressive) are both calibration offsets; the model separates them imperfectly, the recommended fix is the same.</div>`:''}${recentHint}${a.explanation?`<details class="note"><summary>Technical detail</summary><div class="mono" style="margin-top:6px;white-space:pre-wrap">${a.explanation}</div></details>`:''}`;
+    /* SHAP */
+    let sh='';
+    if(a.verdict==='NORMAL')sh=`<div class="muted">No anomaly — nothing to explain. Model fault probability ${pct(a.p_fault)}.</div>`;
+    else if(a.shap_top&&a.shap_top.length){const t=a.shap_top.slice(0,5),mx=Math.max(...t.map(x=>x[1]));
+      sh=t.map(x=>{const f=x[0],share=x[1]/mx;let lab=share>=.75?'Strong':share>=.4?'High':share>=.15?'Moderate':'Low';const mm=f.match(/^(temp|pres|rh)_(cz|sp_z)$/);if(mm&&a[f]!=null)lab=sg(a[f]);
+        return `<div class="fac"><span class="n">${fname(f)}</span><div class="bar"><i style="width:${Math.max(6,100*share)}%;background:${SC[a.verdict]}"></i></div><span class="s">${lab}</span></div>`}).join('');
+      if(a.verdict==='UNCERTAIN'&&/natural repeat length/.test(a.explanation||''))sh=`<div class="muted" style="margin-bottom:6px">Persistence guard: the model score (${pct(a.p_fault)}) is high, but the run is still shorter than this station's natural repeat length, so the alert is held back. What drove the score:</div>`+sh;}
+    else{const rows=[['Spatial deviation',e.sp_z==null?0:Math.min(1,Math.abs(e.sp_z)/6),e.sp_z!=null?sg(e.sp_z):'n/a'],['Climatology deviation',e.cz==null?0:Math.min(1,Math.abs(e.cz)/6),sg(e.cz)],['Neighbour agreement',e.w==null?0:e.w,e.w!=null?pct(e.w):'n/a']];
+      const how=a.verdict==='GENUINE_WEATHER_EVENT'?`Decided by the spatial witness test: ${(e.k!=null&&e.n!=null)?`${e.k} of ${e.n}`:'most'} neighbouring stations show the same anomaly, so the reading is accepted as real weather (model fault score ${pct(a.p_fault)} overruled).`
+        :(a.verdict==='UNCERTAIN'&&/natural repeat length/.test(a.explanation||''))?`Persistence guard: the model score (${pct(a.p_fault)}) is high, but the run is still shorter than this station's natural repeat length, so the alert is held back. Evidence so far:`
+        :a.verdict==='UNCERTAIN'?`Model fault probability ${pct(a.p_fault)} is below the ${pct(THETA)} alert threshold — no alert raised, so no feature attribution was computed. Evidence so far:`
+        :`Decided by a deterministic WMO quality-control rule (Tier-1) — no model weighting was needed.`;
+      sh=`<div class="muted" style="margin-bottom:6px">${how}</div>`+rows.map(r=>`<div class="fac"><span class="n">${r[0]}</span><div class="bar"><i style="width:${Math.max(6,100*r[1])}%;background:${SC[a.verdict]}"></i></div><span class="s">${r[2]}</span></div>`).join('');}
+    root.querySelector(`#${name}-shap`).innerHTML=`<h3>Why the model flagged this</h3>${sh}`;
+    /* SENSOR RESULT (only for sensor faults) */
+    const sr=root.querySelector(`#${name}-sres`);
+    if(a.verdict==='SENSOR_FAULT'&&['temp','pres','rh'].includes(a.sensor)){const k=a.sensor,u=UN[k],d=k==='rh'?0:1;
+      sr.classList.remove('hidden');
+      sr.innerHTML=`<h3>Sensor result</h3><div style="font-size:21px;font-weight:700;margin-bottom:12px">${SN[k]} sensor</div>
+        <div class="kv"><span class="k">Status</span><span class="v" style="color:#f87171">FAULT DETECTED</span><span class="k">Root cause</span><span class="v">${FN[a.fault]||a.fault}</span><span class="k">Observed</span><span class="v">${val(a[k],d)} ${u}</span><span class="k">Estimated bias</span><span class="v">${a.bias_estimate!=null?(a.bias_estimate>0?'+':'')+fmt(a.bias_estimate,d)+' '+u:'—'}</span><span class="k">Corrected estimate</span><span class="v" style="color:#4ade80">${a.corrected!=null?fmt(a.corrected,d)+' '+u:'—'}</span><span class="k">Confidence</span><span class="v">${pct(a.confidence)}</span></div>
+        <div class="plain" style="border-color:#fb923c"><b>Recommended action:</b> ${a.action||'Inspect sensor.'}</div><span class="warnlbl">MODEL ESTIMATE — NOT RAW OBSERVATION</span>`;
+    } else {sr.classList.add('hidden');sr.innerHTML='';}
+    healthBox();
+  }
+  function faultStats(k){
+    const s=S.ctx.series; if(!s||!s.ts.length)return {n:0,total:0,top:null};
+    const end=Date.parse(s.ts[s.ts.length-1].replace(' ','T')+':00Z'),start=end-7*864e5; let n=0,total=0,kinds={};
+    s.ts.forEach((t,i)=>{if(Date.parse(t.replace(' ','T')+':00Z')<start)return;total++;if(s.verdict[i]==='SENSOR_FAULT'&&s.sensor[i]===k){n++;const f=s.fault[i]||'fault';kinds[f]=(kinds[f]||0)+1}});
+    const top=Object.entries(kinds).sort((a,b)=>b[1]-a[1])[0]; return {n,total,top:top?top[0]:null};
+  }
+  function healthBox(){
+    const h=S.ctx.health||{}; const st=h.station||{health:null,status:'—'}; const a=S.sel; const selSen=(a&&a.verdict==='SENSOR_FAULT'&&['temp','pres','rh'].includes(a.sensor))?a.sensor:null;
+    const rows=['temp','pres','rh'].map(k=>{const x=h[k]||{},f=faultStats(k),hl=k===selSen;
+      const b=x.bias_24h, tol={temp:0.5,pres:0.5,rh:5}[k], offs=(b!=null&&Math.abs(b)>=tol*1.5)?`reads ${b>0?'+':''}${fmt(b,k==='rh'?0:1)} ${UN[k]} vs neighbours (24 h)`:'';
+      const why=f.n?`${f.n} of ${f.total} readings faulty · 7 d${f.top?' · '+(FN[f.top]||f.top).toLowerCase():''}${offs?' · '+offs:''}`:(offs?`no faults in last 7 d · ${offs}`:`no faults in last 7 d`);
+      return `<div class="fac" style="grid-template-columns:1fr 120px 76px;${hl?'background:rgba(239,68,68,.08);border-radius:8px;padding:6px 8px;margin:6px -8px':''}"><span class="n">${SN[k]}${hl?' <span style="color:#f87171;font-size:12px;font-weight:700">← selected fault</span>':''}<div class="note">${why}</div></span><div class="bar"><i style="width:${x.health||0}%;background:${HC(x.health||0)}"></i></div><span class="s" style="color:var(--text)">${fmt(x.health,0)} / 100</span></div>`}).join('');
+    let why='';
+    if(selSen){const x=h[selSen]||{},f=faultStats(selSen),transient=['spike','noise','out_of_range'].includes(a.fault);
+      if((x.health||0)>=80)why=`<div class="plain" style="border-color:#eab308;font-size:14px"><b>Why still ${x.status}?</b> Health is a 7-day maintenance score, not the verdict of one reading. ${transient?`This is a ${(FN[a.fault]||a.fault).toLowerCase()} (${f.n} of the last ${f.total} readings) — auto-rejected, no site visit needed, so it costs only a few points.`:`Only ${f.n} of the last ${f.total} readings were faulty so far; if the ${(FN[a.fault]||a.fault).toLowerCase()} persists, ${SN[selSen].toLowerCase()} health will keep falling and the status will change.`}</div>`;
+      else why=`<div class="plain" style="border-color:${HC(x.health||0)};font-size:14px">${SN[selSen]} health is <b>${x.status}</b>: ${f.n} of the last ${f.total} readings were faulty — this sensor needs attention.</div>`;}
+    root.querySelector(`#${name}-health`).innerHTML=`<h3>Sensor health · last 7 days</h3><div class="note" style="margin:-6px 0 10px">Maintenance priority for each sensor — separate from the verdict of a single reading.</div>`+rows+
+      `<div class="kv" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><span class="k">Overall</span><span class="v">${fmt(st.health,0)} / 100</span><span class="k">Status</span><span class="v" style="color:${HC(st.health||0)}">${st.status}</span></div>${why}`;
+  }
+  function chart(){
+    const s=S.ctx.series,key=S.key,T=s.ts.map(x=>Date.parse(x.replace(' ','T')+':00Z')),cl=v=>(v==null||v<=-99||v>=9000)?null:v;
+    const obs=T.map((t,i)=>({x:t,y:cl(s[key][i])})), exp=T.map((t,i)=>({x:t,y:s[key+'_expected']?cl(s[key+'_expected'][i]):null}));
+    const an=[];s.verdict.forEach((v,i)=>{if(v!=='NORMAL'&&v!=='UNCERTAIN'&&(s.sensor[i]===key||s.sensor[i]==='all'||!s.sensor[i])){const y=cl(s[key][i]);if(y!=null)an.push({x:T[i],y,v,ts:s.ts[i]})}});
+    const corr=[];s.corrected.forEach((c,i)=>{if(c!=null&&s.sensor[i]===key)corr.push({x:T[i],y:c})});
+    if(S.chart)S.chart.destroy();
+    S.chart=new Chart(root.querySelector('canvas'),{type:'line',data:{datasets:[
+      {label:'Selected',data:[],showLine:false,pointRadius:12,pointBorderColor:'#fff',pointBorderWidth:2.5,pointBackgroundColor:'rgba(255,255,255,.12)',order:0},
+      {label:'Anomaly',data:an,showLine:false,pointRadius:5.5,pointHoverRadius:8,pointBackgroundColor:c=>SC[(c.raw||{}).v]||'#fff',pointBorderWidth:0,order:1},
+      {label:'Corrected estimate',data:corr,showLine:false,pointStyle:'triangle',pointRadius:6,pointBackgroundColor:'#22c55e',pointBorderWidth:0,order:2},
+      {label:'Observed',data:obs,borderColor:'#eef2ff',borderWidth:1.6,pointRadius:0,spanGaps:false,order:3},
+      {label:'Expected',data:exp,borderColor:'#38bdf8',borderWidth:1.3,borderDash:[6,4],pointRadius:0,order:4}]},
+      options:{animation:false,parsing:false,normalized:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:true},
+        onClick:(e,els,ch)=>{const el=els.find(x=>x.datasetIndex===1);if(el){selectTs(ch.data.datasets[1].data[el.index].ts)}},
+        scales:{x:{type:'time',time:{displayFormats:{minute:'HH:mm',hour:'d MMM HH:mm',day:'d MMM'}},ticks:{color:'#93a3c8',maxRotation:0,autoSkipPadding:28},grid:{color:'rgba(255,255,255,.05)'}},
+                y:{ticks:{color:'#93a3c8'},grid:{color:'rgba(255,255,255,.05)'},title:{display:true,text:`${SN[key]} (${UN[key]})`,color:'#93a3c8'}}},
+        plugins:{legend:{labels:{color:'#b6c2e2',usePointStyle:true,boxWidth:10,font:{size:13},filter:i=>i.text!=='Selected'}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y==null?'—':c.parsed.y.toFixed(1)} ${UN[key]}${(c.raw||{}).v?' · '+VN[c.raw.v]:''}`}}}}});
+    selRing();
+  }
+  function scrollSel(){const tr=root.querySelector(`#${name}-list tr.sel`);if(tr)tr.scrollIntoView({block:'nearest'});}
+  function selRing(){if(!S.chart||!S.sel)return;const s=S.ctx.series,i=s.ts.indexOf(S.sel.ts);const y=i>=0?s[S.key][i]:null;S.chart.data.datasets[0].data=(y==null||y<=-99||y>=9000)?[]:[{x:Date.parse(S.sel.ts.replace(' ','T')+':00Z'),y}];S.chart.update('none');}
+  return {load,selectTs,selLatest};
+}
+const DD=Detail($('#detail-demo'),'DD'), DU=Detail($('#detail-upload'),'DU');
+
+/* ---------- test / upload ---------- */
+const drop=$('#drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)scoreFile(f)});
+$('#file').onchange=e=>{if(e.target.files[0])scoreFile(e.target.files[0]);e.target.value=''};
+$('#demo-btn').onclick=async()=>{$('#t-status').textContent='Loading demo sample…';const b=await (await fetch('/api/sample_csv')).blob();scoreFile(new File([b],'demo_sample.csv'))};
+async function scoreFile(file){
+  $('#t-status').textContent=`Analysing ${file.name}…`;$('#t-summary').classList.add('hidden');$('#detail-upload').innerHTML='';$('#demo-btn').disabled=true;
+  const fd=new FormData();fd.append('file',file);const t0=performance.now();
+  let r;try{r=await fetch('/api/score',{method:'POST',body:fd});}catch(err){$('#t-status').innerHTML=`<span style="color:#f87171">Network error: ${err}</span>`;$('#demo-btn').disabled=false;return;}
+  $('#demo-btn').disabled=false;
+  if(!r.ok){const e=await r.json().catch(()=>({detail:r.statusText}));$('#t-status').innerHTML=`<span style="color:#f87171">Could not analyse this file: ${e.detail}</span>`;return;}
+  UP=await r.json();const secs=((performance.now()-t0)/1000).toFixed(1),rep=UP.report,vc=rep.verdict_counts||{};
+  $('#t-status').textContent=`Done · ${file.name} · ${secs} s`;
+  const notes=[...((rep.schema||{}).notes||[]),...(rep.unseen_stations&&rep.unseen_stations.length?[`new station(s) ${rep.unseen_stations.join(', ')} — climatology fitted from the file`]:[])];
+  $('#t-summary').classList.remove('hidden');
+  $('#t-summary').innerHTML=`<div class="big" style="margin-top:18px">Observations analysed: ${(rep.rows||0).toLocaleString()}</div>
+    <div class="summary">${ORDER.map(v=>`<div class="s"><div class="lbl" style="color:${SC[v]}">${VL[v]}</div><div class="n">${(vc[v]||0).toLocaleString()}</div></div>`).join('')}</div>
+    <div style="margin-top:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><a class="btn" href="/api/download">Download scored CSV</a><span class="note">${notes.length?'Auto-handled: '+notes.join(' · '):'Columns and units recognised.'} · cadence ${rep.cadence_h<1?Math.round(rep.cadence_h*60)+' min':rep.cadence_h+' h'}</span></div>`;
+  const sids=Object.keys(UP.series); const best=sids.map(s=>[s,Object.entries(UP.stations[s].verdicts||{}).filter(([k])=>k!=='NORMAL').reduce((a,[,n])=>a+n,0)]).sort((a,b)=>b[1]-a[1])[0];
+  renderUploadDetail(best?best[0]:sids[0]);
+  setTimeout(()=>$('#detail-upload').scrollIntoView({behavior:'smooth',block:'start'}),50);
+}
+function renderUploadDetail(sid){
+  const st=UP.stations[sid]||{},al=UP.alerts.filter(a=>a.station_id===sid);
+  const known=META.stations.find(x=>x.station_id===sid);
+  DU.load({mode:'upload',sid,name:known?known.name:sid,sub:`${known?sid+' · known IMD station · ':'uploaded station · '}${(st.n||0).toLocaleString()} observations`,series:UP.series[sid],alerts:al,health:st.health,latest:null,nbN:null,stationList:Object.keys(UP.series)});
+}
+
+/* ---------- benchmarks ---------- */
+function renderMetrics(){
+  const m=META.metrics||{};if(!m.point){$('#metrics').innerHTML='<div class="card muted">No benchmark file found.</div>';return;}
+  const p=m.point;
+  const heads=[['Fault events detected',pct(m.event_detection_rate),'injected faults, held-out 2025 data'],['Precision',pct(p.precision),'alerts that were real faults'],['False alarms · normal hours',(m.normal_false_alarm_rate*100).toFixed(2)+'%','per normal observation'],['False alarms · real extreme weather',(m.genuine_weather_false_alarm_rate*100).toFixed(2)+'%',`${(m.genuine_weather_hours||0).toLocaleString()} genuine extreme-weather hours`],['Root cause correct',pct(m.root_cause_accuracy_given_detection),'when a fault is detected']];
+  const ef=m.event_by_fault||{};const rows=Object.keys(ef).filter(k=>k!=='normal'&&ef[k].events).sort().map(k=>`<tr><td><b>${FN[k]||k}</b></td><td class="num">${ef[k].events}</td><td class="num">${ef[k].detected}</td><td class="num"><b>${pct(ef[k].rate)}</b></td><td class="num">${ef[k].median_ttd_h==null?'—':ef[k].median_ttd_h+' h'}</td></tr>`).join('');
+  $('#metrics').innerHTML=`<div class="stack"><div class="grid" style="grid-template-columns:repeat(5,1fr)">${heads.map(h=>`<div class="card"><h3>${h[0]}</h3><div class="big">${h[1]}</div><div class="note">${h[2]}</div></div>`).join('')}</div>
+    <div class="card"><h3>Detection by fault type · held-out test ${m.test_period||''} · ${(m.test_rows||0).toLocaleString()} observations</h3><table><tr><th>Fault type</th><th class="num">Events</th><th class="num">Detected</th><th class="num">Rate</th><th class="num">Median time to detect</th></tr>${rows}</table>
+    <div class="note" style="margin-top:12px">Evaluated on a chronological hold-out the model never saw; faults injected with ground truth on real IMD/WMO station data. Numbers are quoted as measured.</div></div></div>`;
+}
+init();
+</script>
+</body>
+</html>
