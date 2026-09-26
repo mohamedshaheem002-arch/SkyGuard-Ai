@@ -7,3 +7,9 @@ data/sample_judge.csv
 __pycache__/
 *.pyc
 pipeline.log
+
+# Frontend environment files
+frontend/.env
+frontend/.env*.local
+!frontend/.env.example
+
