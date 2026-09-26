@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: skyguard-backend
+    runtime: docker
+    plan: starter
+    region: oregon
+    healthCheckPath: /api/health
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: SKYGUARD_DEMO_MODE
+        value: "true"
+      - key: SKYGUARD_CORS_ORIGINS
+        value: "*"

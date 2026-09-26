@@ -1,0 +1,9 @@
+data/features.npy
+data/obs.parquet
+data/qc.parquet
+data/feature_names.joblib
+data/last_scored.csv
+data/sample_judge.csv
+__pycache__/
+*.pyc
+pipeline.log

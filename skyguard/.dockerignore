@@ -1,0 +1,25 @@
+# Version control
+.git/
+.gitignore
+
+# Python bytecode & environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Frontend (Excluded: Backend runs completely standalone without React source)
+frontend/
+node_modules/
+
+# Local caches, scratch files, and logs
+data_cache/
+scratch/
+*.log
+.env
+.DS_Store
+Thumbs.db
