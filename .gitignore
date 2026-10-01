@@ -1,0 +1,49 @@
+# Environment variables & secrets
+.env
+*.env
+*.env.local
+.env.*.local
+!.env.example
+!**/.env.example
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Node.js & Frontend dependencies/build
+node_modules/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Large temporary archives & local caches
+data_cache/
+scratch/
+*.log
+*.zip
+
+# Operating System & IDE artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

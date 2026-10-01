@@ -8,7 +8,9 @@ __pycache__/
 *.pyc
 pipeline.log
 
-# Frontend environment files
+# Environment files
+.env
+*.env
 frontend/.env
 frontend/.env*.local
 !frontend/.env.example

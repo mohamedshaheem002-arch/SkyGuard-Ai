@@ -12,6 +12,8 @@ import { Navigation } from './components/common/Navigation';
 import { LoadingState } from './components/common/LoadingState';
 import { ErrorState } from './components/common/ErrorState';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { ChatDrawer } from './components/common/ChatDrawer';
+import { Sparkles } from 'lucide-react';
 
 import { OverviewView } from './components/views/OverviewView';
 import { LiveMapView } from './components/views/LiveMapView';
@@ -25,6 +27,8 @@ export function App() {
   const [activeTab, setActiveTab] = useState<NavigationTab>('overview');
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const [selectedTimestamp, setSelectedTimestamp] = useState<string | null>(null);
+  const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
+  const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
 
   // Real API state
   const [health, setHealth] = useState<SystemHealth | null>(null);
@@ -88,19 +92,34 @@ export function App() {
   };
 
   // Demo mode flag from API (/api/meta or /api/health)
+  // Demo mode flag from API (/api/meta or /api/health)
   const isDemoMode = meta?.demo_mode ?? overview?.demo_mode ?? health?.demo_mode ?? true;
 
   // Active alerts count for navigation badge
   const activeAlertsCount = overview?.recent_alerts?.filter((a) => a.active).length || 0;
 
+  // Global keyboard shortcut to toggle Copilot (Ctrl+K or Ctrl+/)
+  useEffect(() => {
+    const handleGlobalKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === '/')) {
+        e.preventDefault();
+        setIsCopilotOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKey);
+    return () => window.removeEventListener('keydown', handleGlobalKey);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col text-slate-900">
+    <div className="min-h-screen bg-slate-100 flex flex-col text-slate-900 relative">
       {/* Global Header */}
       <Header
         health={health}
         demoMode={isDemoMode}
         onRefresh={() => loadData(true)}
         isRefreshing={isRefreshing}
+        onToggleCopilot={() => setIsCopilotOpen((prev) => !prev)}
+        isCopilotOpen={isCopilotOpen}
       />
 
       {/* Main Navigation Bar */}
@@ -182,7 +201,11 @@ export function App() {
                 )}
 
                 {activeTab === 'test' && (
-                  <TestReplayView meta={meta} onSelectStation={handleSelectStation} />
+                  <TestReplayView
+                    meta={meta}
+                    onSelectStation={handleSelectStation}
+                    onUploadScored={(id) => setActiveUploadId(id)}
+                  />
                 )}
 
                 {activeTab === 'benchmarks' && <BenchmarksView meta={meta} />}
@@ -192,6 +215,29 @@ export function App() {
         )}
       </main>
 
+      {/* Floating Copilot Launcher Button */}
+      {!isCopilotOpen && (
+        <button
+          onClick={() => setIsCopilotOpen(true)}
+          className="fixed bottom-6 right-6 z-30 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-sky-700 to-indigo-800 hover:from-sky-800 hover:to-indigo-900 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group hover:scale-105 border border-sky-400/30 font-sans"
+          title="Open SkyGuard AI Copilot (Ctrl+K or Ctrl+/)"
+        >
+          <Sparkles className="w-4 h-4 text-sky-200 fill-current animate-pulse" />
+          <span className="text-xs font-bold tracking-wide">Ask AI Copilot</span>
+        </button>
+      )}
+
+      {/* SkyGuard Copilot Drawer */}
+      <ChatDrawer
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        activeTab={selectedStationId ? 'stations' : activeTab}
+        selectedStationId={selectedStationId}
+        selectedTimestamp={selectedTimestamp}
+        uploadId={activeUploadId}
+        onSelectStation={handleSelectStation}
+      />
+
       {/* Footer Disclaimer */}
       <footer className="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500 font-sans">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
@@ -200,8 +246,6 @@ export function App() {
           <span className="text-slate-600 font-medium">
             Research & Benchmark Mode (Held-Out Test Data) · Not connected to live operational IMD data feeds
           </span>
-          <span>•</span>
-          <span className="font-mono text-slate-400">API: {API_BASE}</span>
         </div>
       </footer>
     </div>

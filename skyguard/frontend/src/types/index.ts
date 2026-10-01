@@ -196,3 +196,28 @@ export interface ScoreResponse {
   }>;
   series: Record<string, any>;
 }
+
+export interface ChatMessageItem {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string;
+  toolsUsed?: { tool: string; args?: Record<string, any> }[];
+  isStreaming?: boolean;
+}
+
+export interface ChatContextPayload {
+  active_tab?: NavigationTab;
+  selected_station_id?: string | null;
+  selected_timestamp?: string | null;
+  upload_id?: string | null;
+  [key: string]: any;
+}
+
+export interface ChatStatusResponse {
+  configured: boolean;
+  service: string;
+  model: string;
+  tools_count: number;
+  status: 'ready' | 'missing_api_key' | 'error';
+}

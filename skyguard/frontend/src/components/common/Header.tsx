@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Radio, RefreshCw, Activity, ShieldCheck, ShieldAlert, WifiOff } from 'lucide-react';
+import { Radio, RefreshCw, Activity, ShieldCheck, ShieldAlert, WifiOff, Sparkles } from 'lucide-react';
 import type { SystemHealth } from '../../types';
 
 interface HeaderProps {
@@ -7,6 +7,8 @@ interface HeaderProps {
   demoMode: boolean;
   onRefresh: () => void;
   isRefreshing?: boolean;
+  onToggleCopilot?: () => void;
+  isCopilotOpen?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -14,6 +16,8 @@ export const Header: React.FC<HeaderProps> = ({
   demoMode,
   onRefresh,
   isRefreshing = false,
+  onToggleCopilot,
+  isCopilotOpen = false,
 }) => {
   const [utcTime, setUtcTime] = useState<string>('');
 
@@ -109,6 +113,22 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
+
+        {/* AI Copilot Trigger Button */}
+        {onToggleCopilot && (
+          <button
+            onClick={onToggleCopilot}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-semibold text-xs transition cursor-pointer shadow-xs ${
+              isCopilotOpen
+                ? 'bg-sky-800 text-white ring-2 ring-sky-400'
+                : 'bg-gradient-to-r from-sky-700 to-indigo-800 hover:from-sky-800 hover:to-indigo-900 text-white shadow-sky-900/10'
+            }`}
+            title="Open SkyGuard AI Copilot (Groq Cloud)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-sky-200 fill-current" />
+            <span>AI Copilot</span>
+          </button>
+        )}
       </div>
     </header>
   );

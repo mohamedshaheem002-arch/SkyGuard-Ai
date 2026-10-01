@@ -12,9 +12,10 @@ import { FAULT_NAMES } from '../../utils/diagnosis';
 interface TestReplayViewProps {
   meta?: NetworkMeta | null;
   onSelectStation?: (stationId: string) => void;
+  onUploadScored?: (uploadId: string) => void;
 }
 
-export const TestReplayView: React.FC<TestReplayViewProps> = ({ meta, onSelectStation }) => {
+export const TestReplayView: React.FC<TestReplayViewProps> = ({ meta, onSelectStation, onUploadScored }) => {
   const [activeMode, setActiveMode] = useState<'batch' | 'ingest'>('batch');
 
   // Batch scoring states
@@ -42,6 +43,9 @@ export const TestReplayView: React.FC<TestReplayViewProps> = ({ meta, onSelectSt
     try {
       const res = await apiService.scoreFile(file, true);
       setScoreResult(res);
+      if (res.report?.upload_id) {
+        onUploadScored?.(res.report.upload_id);
+      }
       setSelectedAnomalyIndex(0);
       setSelectedStationFilter('ALL');
     } catch (err: any) {

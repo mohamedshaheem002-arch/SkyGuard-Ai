@@ -5,7 +5,7 @@ from collections import OrderedDict
 import io, json, math, os, sys, threading, time, uuid, warnings
 warnings.filterwarnings("ignore")
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 import numpy as np
 import pandas as pd
@@ -17,10 +17,27 @@ from pydantic import BaseModel, Field, field_validator
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+# Auto-load local .env file if present
+env_file = ROOT / ".env"
+if env_file.exists():
+    try:
+        with open(env_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k, v = k.strip(), v.strip().strip("'\"")
+                    if k and k not in os.environ:
+                        os.environ[k] = v
+    except Exception:
+        pass
+
 from skyguard.engine import SkyGuard                            # noqa: E402
 from skyguard.data import load_network, read_any_table         # noqa: E402
 from skyguard.inject import inject                               # noqa: E402
 from skyguard.config import FILL_VALUES                         # noqa: E402
+from skyguard.chat import CHAT_SERVICE, ChatContextRegistry      # noqa: E402
 
 # Environment configuration
 CORS_ORIGINS_RAW = os.environ.get("SKYGUARD_CORS_ORIGINS", "*").strip()
@@ -283,6 +300,16 @@ def alert_episodes(d: pd.DataFrame, days: int = 7, max_n: int = 80, cadence_h: f
     return out[:max_n]
 
 
+# Register SkyGuard data providers for the Groq AI Chatbot read-only tools
+ChatContextRegistry.register(
+    demo_loader=demo_scored,
+    cache_getter=lambda: _CACHE,
+    upload_store_getter=lambda: UPLOAD_STORE,
+    engine_getter=lambda: ENGINE,
+    alert_episodes_fn=alert_episodes,
+)
+
+
 @app.get("/api/station/{sid}")
 def station(sid: str, days: int = Query(14, ge=1, le=120)):
     try:
@@ -443,6 +470,48 @@ def ingest(obs: ObservationIngest):
         "cadence_h": rep.get("cadence_h"),
     }
     return _clean(result)
+
+
+# -----------------------------------------------------------------------------
+# Groq AI Chatbot Endpoints
+# -----------------------------------------------------------------------------
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="Message role: user, assistant, or system")
+    content: str = Field(..., description="Text content of the message")
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage] = Field(..., description="Conversation history")
+    context: Optional[Dict[str, Any]] = Field(None, description="Active UI context: active_tab, selected_station_id, etc.")
+
+
+@app.get("/api/chat/status")
+def chat_status():
+    """Check Groq AI configuration and readiness status."""
+    return _clean(CHAT_SERVICE.get_status())
+
+
+@app.post("/api/chat")
+def chat_endpoint(req: ChatRequest):
+    """Non-streaming Groq chat with autonomous read-only tool calling."""
+    msgs = [m.model_dump() if hasattr(m, "model_dump") else m.dict() for m in req.messages]
+    result = CHAT_SERVICE.chat(msgs, context=req.context)
+    return _clean(result)
+
+
+@app.post("/api/chat/stream")
+async def chat_stream_endpoint(req: ChatRequest):
+    """Streaming Groq chat with tool calling events and SSE tokens."""
+    msgs = [m.model_dump() if hasattr(m, "model_dump") else m.dict() for m in req.messages]
+    return StreamingResponse(
+        CHAT_SERVICE.chat_stream(msgs, context=req.context),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 app.mount("/static", StaticFiles(directory=str(ROOT / "app" / "static")), name="static")
